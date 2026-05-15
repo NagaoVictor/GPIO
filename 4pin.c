@@ -26,8 +26,8 @@ void setup(){
         req.lines = 4;
         req.lineoffsets[0] = 26; //1
         req.lineoffsets[1] = 19; //2
-	req.lineoffsets[2] = 13;
-	req.lineoffsets[3] = 6;
+	req.lineoffsets[2] = 13; //3
+	req.lineoffsets[3] = 6; //4
 
 	req.flags = GPIOHANDLE_REQUEST_OUTPUT;
         strcpy(req.consumer_label, "leds");
@@ -44,7 +44,6 @@ void reset(){
         data.values[1] = 0;
 	data.values[2] = 0;
         data.values[3] = 0;
-
         ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 }
 
@@ -63,7 +62,6 @@ void forward(){
         data.values[1] = 1;
 	data.values[2] = 0;
         data.values[3] = 0;
-
         ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 }
 
@@ -73,7 +71,6 @@ void leftward(){
         data.values[1] = 0;
 	data.values[2] = 0;
         data.values[3] = 0;
-
         ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 }
 
@@ -153,8 +150,9 @@ int main(){
     		if (c == 'w'){ forward();}
     		else if (c == 'a'){ leftward();}
 		else if (c == 'd'){ rightward();}
+		else if (c == 's'){ backward();}
 		else if (c == 'r'){ reset();}
-		else {backward();}
+		else {reset();}
 
   	}
 	reset();
