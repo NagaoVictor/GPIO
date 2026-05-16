@@ -15,7 +15,7 @@ struct gpiohandle_data data;
 int chip_fd;
 
 void setup(){
-	int chip_fd = open("/dev/gpiochip0", O_RDWR);
+	chip_fd = open("/dev/gpiochip0", O_RDWR);
         if (chip_fd < 0){
                 perror("open");
                 exit(1); 
