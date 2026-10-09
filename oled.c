@@ -1,120 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <termios.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
 
 #define I2C_DEV_PATH "/dev/i2c-1"
 #define OLED_ADDR    0x3C
 
-// Configura o terminal com segurança para leitura em tempo real
-void set_conio_terminal_mode(struct termios *orig_opts) {
-    struct termios new_opts;
-    tcgetattr(STDIN_FILENO, orig_opts);
-    
-    // Cópia segura utilizando memcpy para evitar erros de tipagem/atribuição
-    memcpy(&new_opts, orig_opts, sizeof(struct termios));
-    
-    // Desativa o modo canônico e o eco de caracteres
-    new_opts.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
-}
-
-void reset_terminal_mode(struct termios *orig_opts) {
-    tcsetattr(STDIN_FILENO, TCSANOW, orig_opts);
-}
-
-void oled_send_command(int file, unsigned char cmd) {
+void send_cmd(int fd, unsigned char cmd) {
     unsigned char buf[2] = {0x00, cmd};
-    write(file, buf, 2);
-    usleep(500);
-}
-
-void oled_init(int file) {
-    oled_send_command(file, 0xAE); // Display OFF
-    oled_send_command(file, 0xD5); // Set Display Clock Divide Ratio
-    oled_send_command(file, 0x80);
-    oled_send_command(file, 0xA8); // Set Multiplex Ratio (1/64)
-    oled_send_command(file, 0x3F);
-    oled_send_command(file, 0xD3); // Set Display Offset
-    oled_send_command(file, 0x00);
-    oled_send_command(file, 0x40); // Set Display Start Line
-    oled_send_command(file, 0x8D); // Set Charge Pump Enable
-    oled_send_command(file, 0x14); // Ativa bomba interna
-    oled_send_command(file, 0x20); // Set Memory Addressing Mode
-    oled_send_command(file, 0x00); // Horizontal
-    oled_send_command(file, 0xA1); // Set Segment Re-map
-    oled_send_command(file, 0xC8); // Set COM Output Scan Direction
-    oled_send_command(file, 0xDA); // Set COM Pins Hardware Configuration
-    oled_send_command(file, 0x12);
-    oled_send_command(file, 0x81); // Set Contrast Control
-    oled_send_command(file, 0xCF);
-    oled_send_command(file, 0xD9); // Set Pre-charge Period
-    oled_send_command(file, 0xF1);
-    oled_send_command(file, 0xDB); // Set VCOMH Deselect Level
-    oled_send_command(file, 0x40);
-    oled_send_command(file, 0xA4); // Entire Display On
-    oled_send_command(file, 0xA6); // Set Normal Display
-    oled_send_command(file, 0xAF); // Display ON
-    usleep(10000);
-}
-
-void oled_clear(int file) {
-    oled_send_command(file, 0x21); // Column Address
-    oled_send_command(file, 0x00);
-    oled_send_command(file, 0x7F);
-    
-    oled_send_command(file, 0x22); // Page Address
-    oled_send_command(file, 0x00);
-    oled_send_command(file, 0x07);
-
-    unsigned char data[129];
-    data[0] = 0x40; // Dados para a RAM
-    for (int i = 1; i < 129; i++) {
-        data[i] = 0x00;
-    }
-
-    for (int page = 0; page < 8; page++) {
-        write(file, data, 129);
-        usleep(500);
-    }
+    write(fd, buf, 2);
+    usleep(200);
 }
 
 int main() {
-    struct termios orig_opts;
-    int i2c_fd;
-
-    if ((i2c_fd = open(I2C_DEV_PATH, O_RDWR)) < 0) {
-        perror("Erro ao abrir /dev/i2c-1");
+    int fd = open(I2C_DEV_PATH, O_RDWR);
+    if (fd < 0) {
+        perror("Erro ao abrir I2C");
         return 1;
     }
 
-    if (ioctl(i2c_fd, I2C_SLAVE, OLED_ADDR) < 0) {
-        perror("Erro ao configurar o endereço do OLED");
-        close(i2c_fd);
+    if (ioctl(fd, I2C_SLAVE, OLED_ADDR) < 0) {
+        perror("Erro ao configurar endereço I2C");
+        close(fd);
         return 1;
     }
 
-    printf("Inicializando o OLED em C...\n");
-    oled_init(i2c_fd);
-    oled_clear(i2c_fd);
+    printf("Enviando comandos de inicializacao direta...\n");
 
-    set_conio_terminal_mode(&orig_opts);
-    printf("Sistema pronto! Digite no teclado (Pressione ESC para sair):\n");
+    // Sequência essencial de ativação
+    send_cmd(fd, 0xAE); // Display OFF
+    send_cmd(fd, 0xD5); send_cmd(fd, 0x80); // Clock div
+    send_cmd(fd, 0xA8); send_cmd(fd, 0x3F); // Multiplex ratio (64)
+    send_cmd(fd, 0xD3); send_cmd(fd, 0x00); // Display offset
+    send_cmd(fd, 0x40); // Start line
+    send_cmd(fd, 0x8D); send_cmd(fd, 0x14); // Charge pump ON
+    send_cmd(fd, 0x20); send_cmd(fd, 0x00); // Horizontal addressing mode
+    send_cmd(fd, 0xA1); // Segment remap
+    send_cmd(fd, 0xC8); // COM output scan direction
+    send_cmd(fd, 0xDA); send_cmd(fd, 0x12); // COM pins
+    send_cmd(fd, 0x81); send_cmd(fd, 0xCF); // Contrast
+    send_cmd(fd, 0xD9); send_cmd(fd, 0xF1); // Pre-charge
+    send_cmd(fd, 0xDB); send_cmd(fd, 0x40); // VCOMH
+    send_cmd(fd, 0xA4); // Resume to RAM content
+    send_cmd(fd, 0xA6); // Normal display (não invertido)
+    send_cmd(fd, 0xAF); // Display ON
 
-    char c;
-    while (1) {
-        c = getchar(); 
-        if (c == 27) break; // ESC
+    // Configura o ponteiro para cobrir a tela inteira (Colunas 0-127, Páginas 0-7)
+    send_cmd(fd, 0x21); send_cmd(fd, 0x00); send_cmd(fd, 0x7F);
+    send_cmd(fd, 0x22); send_cmd(fd, 0x00); send_cmd(fd, 0x07);
 
-        printf("Tecla pressionada: %c\n", c);
+    // Envia dados preenchendo a tela com pixels acesos (0xFF) para testar se acende
+    unsigned char block[129];
+    block[0] = 0x40; // Indicador de dados
+    for (int i = 1; i < 129; i++) {
+        block[i] = 0xFF; // Todos os pixels da coluna acesos
     }
 
-    oled_send_command(i2c_fd, 0xAE); // Display OFF ao sair
-    reset_terminal_mode(&orig_opts);
-    close(i2c_fd);
+    for (int p = 0; p < 8; p++) {
+        write(fd, block, 129);
+        usleep(500);
+    }
+
+    printf("Dados enviados. O display deve estar aceso.\n");
+    close(fd);
     return 0;
 }
