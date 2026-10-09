@@ -10,8 +10,7 @@
 #define I2C_DEV_PATH "/dev/i2c-1"
 #define OLED_ADDR    0x3C
 
-// Tabela de fonte 5x7 simplificada para dígitos (0-9) e alguns símbolos
-// Cada caractere ocupa 5 bytes verticais (colunas da esquerda para a direita)
+// Tabela de fonte 5x7 simplificada para dígitos (0-9)
 static const unsigned char font5x7[][5] = {
     {0x3E, 0x51, 0x49, 0x45, 0x3E}, // 0
     {0x00, 0x42, 0x7F, 0x40, 0x00}, // 1
@@ -25,7 +24,6 @@ static const unsigned char font5x7[][5] = {
     {0x06, 0x49, 0x49, 0x29, 0x1E}  // 9
 };
 
-// Configura o terminal para leitura imediata sem eco
 void set_conio_terminal_mode(struct termios *orig_opts) {
     struct termios new_opts;
     tcgetattr(STDIN_FILENO, orig_opts);
@@ -77,17 +75,14 @@ void oled_clear(int fd) {
     }
 }
 
-// Desenha um dígito (0-9) em uma coluna e página específica
 void oled_draw_digit(int fd, int digit, int col, int page) {
     if (digit < 0 || digit > 9) return;
 
-    // Define o posicionamento do cursor na GDDRAM
     send_cmd(fd, 0x21); send_cmd(fd, col); send_cmd(fd, col + 5);
     send_cmd(fd, 0x22); send_cmd(fd, page); send_cmd(fd, page);
 
     unsigned char data[7];
-    data[0] = 0x40; // Indicador de dados
-    // Copia os 5 bytes da fonte e adiciona 1 byte de espaçamento (0x00)
+    data[0] = 0x40; 
     memcpy(&data[1], font5x7[digit], 5);
     data[6] = 0x00; 
 
@@ -108,9 +103,8 @@ int main() {
         return 1;
     }
 
-    printf("Inicializando OLED e limpando tela...\n");
     oled_init(fd);
-    oled_clear(fd);
+    oled_clear(fd); // Garante que a tela inicia limpa e ativa
 
     set_conio_terminal_mode(&orig_opts);
     printf("Sistema pronto! Digite numeros de 0 a 9 (ESC para sair):\n");
@@ -123,22 +117,20 @@ int main() {
         c = getchar();
         if (c == 27) break; // ESC
 
-        // Verifica se o caractere digitado é um dígito numérico (0-9)
         if (c >= '0' && c <= '9') {
             int digit = c - '0';
             oled_draw_digit(fd, digit, current_col, current_page);
             printf("Dígito %d impresso na coluna %d\n", digit, current_col);
 
-            // Avança a posição para o próximo caractere (6 pixels por caractere)
             current_col += 6;
-            if (current_col > 120) { // Se passar da largura, pula para a próxima linha (página)
+            if (current_col > 120) {
                 current_col = 0;
                 current_page = (current_page + 1) % 8;
             }
         }
     }
 
-    send_cmd(fd, 0xAE); // Display OFF ao sair
+    send_cmd(fd, 0xAE);
     reset_terminal_mode(&orig_opts);
     close(fd);
     return 0;
