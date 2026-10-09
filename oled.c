@@ -24,6 +24,7 @@ void reset_terminal_mode(struct termios *orig_opts) {
 void oled_send_command(int file, unsigned char cmd) {
     unsigned char buf[2] = {0x00, cmd};
     write(file, buf, 2);
+    usleep(1000); // Pequeno atraso para o SSD1306 processar o comando
 }
 
 void oled_init(int file) {
@@ -47,11 +48,10 @@ void oled_init(int file) {
         0xAF        // Display ON
     };
     write(file, init_sequence, sizeof(init_sequence));
+    usleep(10000); // 10ms para estabilizar após ligar
 }
 
-// Função para limpar a tela enviando zeros para toda a GDDRAM
 void oled_clear(int file) {
-    // Seta o posicionamento para cobrir a tela inteira (Colunas 0 a 127, Páginas 0 a 7)
     oled_send_command(file, 0x21); // Set Column Address
     oled_send_command(file, 0x00); // Start Column: 0
     oled_send_command(file, 0x7F); // End Column: 127
@@ -60,17 +60,15 @@ void oled_clear(int file) {
     oled_send_command(file, 0x00); // Start Page: 0
     oled_send_command(file, 0x07); // End Page: 7
 
-    // Prepara um buffer de dados com zeros (128 colunas * 8 páginas = 1024 bytes)
-    // Usamos o byte 0x40 para indicar que o que segue são dados para a RAM do display
     unsigned char data[129];
-    data[0] = 0x40;
+    data[0] = 0x40; // Indica dados para a RAM
     for (int i = 1; i < 129; i++) {
-        data[i] = 0x00; // 0x00 apaga todos os pixels da página
+        data[i] = 0x00;
     }
 
-    // Escreve 8 blocos de 128 bytes para cobrir toda a tela
     for (int page = 0; page < 8; page++) {
         write(file, data, 129);
+        usleep(1000);
     }
 }
 
@@ -91,7 +89,7 @@ int main() {
 
     printf("Inicializando e limpando o OLED SSD1306...\n");
     oled_init(i2c_fd);
-    oled_clear(i2c_fd); // Limpa o lixo de memória da tela
+    oled_clear(i2c_fd);
 
     set_conio_terminal_mode(&orig_opts);
     printf("Sistema pronto! Digite no teclado (Pressione ESC para sair):\n");
@@ -104,7 +102,7 @@ int main() {
         printf("Tecla enviada: %c\n", c);
     }
 
-    oled_send_command(i2c_fd, 0xAE); // Display OFF ao sair
+    oled_send_command(i2c_fd, 0xAE);
     reset_terminal_mode(&orig_opts);
     close(i2c_fd);
     return 0;
