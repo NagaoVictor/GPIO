@@ -104,7 +104,7 @@ int main() {
     }
 
     oled_init(fd);
-    //oled_clear(fd); // Garante que a tela inicia limpa e ativa
+    oled_clear(fd); // Garante que a tela inicia limpa e ativa
 
     set_conio_terminal_mode(&orig_opts);
     printf("Sistema pronto! Digite numeros de 0 a 9 (ESC para sair):\n");
