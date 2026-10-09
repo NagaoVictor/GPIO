@@ -18,10 +18,8 @@ int  main(int argc, char*argv[]){
 		set_gpio(num);
 		sleep(timer);
 	}
-	
-	memset(&data, 0, sizeof(data));
-	ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data );
-	
+
+	reset();
 	close_device();
 
 }

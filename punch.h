@@ -28,6 +28,12 @@ void set_gpio(int value){
 	ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 }
 
+void reset(){
+	memset(&data, 0 ,sizeof(data));
+	ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
+
+}
+
 int open_device(){
 	fd = open("/dev/gpiochip0", O_RDWR, 0666);
 	if (fd < 0){
