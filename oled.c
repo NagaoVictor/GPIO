@@ -21,34 +21,40 @@ void reset_terminal_mode(struct termios *orig_opts) {
     tcsetattr(STDIN_FILENO, TCSANOW, orig_opts);
 }
 
+// Envia um comando isolado para o SSD1306
 void oled_send_command(int file, unsigned char cmd) {
-    unsigned char buf[2] = {0x00, cmd};
+    unsigned char buf[2] = {0x00, cmd}; // 0x00 indica que o byte seguinte é um comando
     write(file, buf, 2);
-    usleep(1000); // Pequeno atraso para o SSD1306 processar o comando
+    usleep(500); // Pequeno atraso para estabilizar o barramento
 }
 
 void oled_init(int file) {
-    unsigned char init_sequence[] = {
-        0x00,       
-        0xAE,       // Display OFF
-        0xD5, 0x80, // Set Display Clock Divide Ratio
-        0xA8, 0x3F, // Set Multiplex Ratio (1/64)
-        0xD3, 0x00, // Set Display Offset
-        0x40,       // Set Display Start Line
-        0x8D, 0x14, // Set Charge Pump Enable
-        0x20, 0x00, // Set Memory Addressing Mode (Horizontal)
-        0xA1,       // Set Segment Re-map
-        0xC8,       // Set COM Output Scan Direction
-        0xDA, 0x12, // Set COM Pins Hardware Configuration
-        0x81, 0xCF, // Set Contrast Control
-        0xD9, 0xF1, // Set Pre-charge Period
-        0xDB, 0x40, // Set VCOMH Deselect Level
-        0xA4,       // Entire Display On
-        0xA6,       // Set Normal Display
-        0xAF        // Display ON
-    };
-    write(file, init_sequence, sizeof(init_sequence));
-    usleep(10000); // 10ms para estabilizar após ligar
+    oled_send_command(file, 0xAE); // Display OFF
+    oled_send_command(file, 0xD5); // Set Display Clock Divide Ratio / Oscillator Frequency
+    oled_send_command(file, 0x80);
+    oled_send_command(file, 0xA8); // Set Multiplex Ratio (1/64)
+    oled_send_command(file, 0x3F);
+    oled_send_command(file, 0xD3); // Set Display Offset
+    oled_send_command(file, 0x00);
+    oled_send_command(file, 0x40); // Set Display Start Line
+    oled_send_command(file, 0x8D); // Set Charge Pump Enable
+    oled_send_command(file, 0x14); // Ativa a bomba interna de tensão
+    oled_send_command(file, 0x20); // Set Memory Addressing Mode
+    oled_send_command(file, 0x00); // Horizontal addressing mode
+    oled_send_command(file, 0xA1); // Set Segment Re-map
+    oled_send_command(file, 0xC8); // Set COM Output Scan Direction
+    oled_send_command(file, 0xDA); // Set COM Pins Hardware Configuration
+    oled_send_command(file, 0x12);
+    oled_send_command(file, 0x81); // Set Contrast Control
+    oled_send_command(file, 0xCF);
+    oled_send_command(file, 0xD9); // Set Pre-charge Period
+    oled_send_command(file, 0xF1);
+    oled_send_command(file, 0xDB); // Set VCOMH Deselect Level
+    oled_send_command(file, 0x40);
+    oled_send_command(file, 0xA4); // Entire Display On (Resume)
+    oled_send_command(file, 0xA6); // Set Normal Display (não invertido)
+    oled_send_command(file, 0xAF); // Display ON! (Acende a tela)
+    usleep(10000);
 }
 
 void oled_clear(int file) {
@@ -61,14 +67,14 @@ void oled_clear(int file) {
     oled_send_command(file, 0x07); // End Page: 7
 
     unsigned char data[129];
-    data[0] = 0x40; // Indica dados para a RAM
+    data[0] = 0x40; // 0x40 indica envio de dados para a RAM do display
     for (int i = 1; i < 129; i++) {
-        data[i] = 0x00;
+        data[i] = 0x00; // Zera os pixels
     }
 
     for (int page = 0; page < 8; page++) {
         write(file, data, 129);
-        usleep(1000);
+        usleep(500);
     }
 }
 
@@ -87,7 +93,7 @@ int main() {
         return 1;
     }
 
-    printf("Inicializando e limpando o OLED SSD1306...\n");
+    printf("Inicializando o OLED SSD1306 byte a byte...\n");
     oled_init(i2c_fd);
     oled_clear(i2c_fd);
 
@@ -102,7 +108,7 @@ int main() {
         printf("Tecla enviada: %c\n", c);
     }
 
-    oled_send_command(i2c_fd, 0xAE);
+    oled_send_command(i2c_fd, 0xAE); // Display OFF ao sair
     reset_terminal_mode(&orig_opts);
     close(i2c_fd);
     return 0;
