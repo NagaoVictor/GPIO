@@ -37,14 +37,14 @@ void setup(){
 void tremer(){
         memset(&data, 0, sizeof(data));
         data.values[0] = 1;
-        ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &req);
+        ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 
 }
 
 void parar(){
 	memset(&data, 0 , sizeof(data));
 	data.values[0] = 0;
-	ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &req);
+	ioctl(req.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
 }
 
 
@@ -83,6 +83,7 @@ int main(){
     		if (c == 'q' || c == 'Q') break;
     
     		if (c == 'w'){tremer();}
+		else if(c == 's'){parar();}
 		else {parar();}
   	}
 	parar();
